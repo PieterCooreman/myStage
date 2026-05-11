@@ -151,6 +151,7 @@
     const STORAGE_KEY = "myStage.session.v1";
 
     let state = {
+        title: "",       // user-supplied plot name (band / event / date)
         items: [],       // array of placed canvas items
         selectedId: null,
         zCounter: 1,     // monotonically increasing for stacking
@@ -170,6 +171,7 @@
     const $emptyHint     = document.getElementById("empty-hint");
     const $toolbar       = document.getElementById("item-toolbar");
     const $rotateSlider  = document.getElementById("rotate-slider");
+    const $title         = document.getElementById("plot-title");
 
     /* =============================================================
      * 4. PERSISTENCE
@@ -194,6 +196,7 @@
             const parsed = JSON.parse(raw);
             if (parsed && Array.isArray(parsed.items)) {
                 state = {
+                    title: typeof parsed.title === "string" ? parsed.title : "",
                     items: parsed.items,
                     selectedId: null,
                     zCounter: parsed.zCounter || (parsed.items.length + 1),
@@ -201,6 +204,15 @@
             }
         } catch (e) {
             console.warn("Could not parse saved session:", e);
+        }
+    }
+
+    /**
+     * Push state.title -> the topbar input.
+     */
+    function syncTitleInput() {
+        if ($title && $title.value !== state.title) {
+            $title.value = state.title || "";
         }
     }
 
@@ -730,12 +742,14 @@
      *    - PNG/PDF   : rasterise + download
      * ============================================================= */
     document.getElementById("btn-clear").addEventListener("click", () => {
-        if (!state.items.length) return;
+        if (!state.items.length && !state.title) return;
         if (!confirm("Clear the entire stage? This cannot be undone.")) return;
+        state.title = "";
         state.items = [];
         state.selectedId = null;
         state.zCounter = 1;
         renderStage();
+        syncTitleInput();
         save();
     });
 
@@ -744,13 +758,14 @@
             app: "myStage",
             version: 1,
             exportedAt: new Date().toISOString(),
+            title: state.title || "",
             items: state.items,
             zCounter: state.zCounter,
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], {
             type: "application/json",
         });
-        triggerDownload(blob, `mystage-${timestamp()}.json`);
+        triggerDownload(blob, exportFilename("json"));
     });
 
     document.getElementById("file-import").addEventListener("change", (e) => {
@@ -764,10 +779,12 @@
                     alert("That file doesn't look like a myStage session.");
                     return;
                 }
+                state.title = typeof data.title === "string" ? data.title : "";
                 state.items = data.items.map(sanitiseImportedItem);
                 state.zCounter = data.zCounter || state.items.length + 1;
                 state.selectedId = null;
                 renderStage();
+                syncTitleInput();
                 save();
             } catch (err) {
                 alert("Could not parse JSON: " + err.message);
@@ -903,9 +920,8 @@
             // is kept in the API for backwards compatibility, but PNG
             // would still produce huge files; JPEG is the sane default.
             const mime = "image/jpeg";
-            const ext  = "jpg";
             canvas.toBlob((blob) => {
-                if (blob) triggerDownload(blob, `mystage-${timestamp()}.${ext}`);
+                if (blob) triggerDownload(blob, exportFilename("jpg"));
             }, mime, 0.85);
         } catch (err) {
             alert("Image export failed: " + err.message);
@@ -929,15 +945,21 @@
         container.style.fontFamily = getComputedStyle(document.body).fontFamily;
         container.style.color = "#1f2937";
 
+        // Header. Show the user's plot title prominently; fall back to a
+        // generic name if none has been set.
+        const titleText = state.title || "Untitled Stage Plot";
         const header = document.createElement("div");
         header.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;
+            <div style="display:flex; justify-content:space-between; align-items:flex-end;
                         border-bottom: 2px solid #1f2937; padding-bottom: 8px; margin-bottom: 16px;">
                 <div>
-                    <h1 style="margin:0; font-size:24px;">myStage — Stage Plot</h1>
-                    <div style="font-size:12px; color:#6b7280;">Generated ${new Date().toLocaleString()}</div>
+                    <h1 style="margin:0 0 2px 0; font-size:24px; color:#1f2937;">${escapeHtml(titleText)}</h1>
+                    <div style="font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:1px;">myStage · Stage Plot</div>
                 </div>
-                <div style="font-size:11px; color:#9ca3af;">Front of stage / audience faces DOWN</div>
+                <div style="text-align:right;">
+                    <div style="font-size:12px; color:#6b7280;">Generated ${new Date().toLocaleString()}</div>
+                    <div style="font-size:11px; color:#9ca3af;">Front of stage / audience faces DOWN</div>
+                </div>
             </div>
         `;
         container.appendChild(header);
@@ -1075,20 +1097,41 @@
         stageRaster.node.remove();
 
         // ---- 2. Vector title bar ----
+        // Plot title (user-set) is the dominant heading; the app name is a
+        // small subtitle so the venue immediately sees what show this is.
+        const titleText = state.title || "Untitled Stage Plot";
+
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(18);
         pdf.setTextColor(31, 41, 55);
-        pdf.text("myStage — Stage Plot", M, M + 6);
+        // Clip the title if it would collide with the right-side metadata.
+        const titleMaxW = PAGE_W - M - M - 100;
+        const titleLines = pdf.splitTextToSize(titleText, titleMaxW);
+        pdf.text(titleLines[0], M, M + 6);
 
         pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(156, 163, 175);
+        pdf.text("MYSTAGE · STAGE PLOT", M, M + 11);
+
         pdf.setFontSize(9);
         pdf.setTextColor(107, 114, 128);
-        pdf.text("Generated " + new Date().toLocaleString(), M, M + 11);
+        pdf.text("Generated " + new Date().toLocaleString(), PAGE_W - M, M + 6, { align: "right" });
         pdf.text("Front of stage / audience faces DOWN", PAGE_W - M, M + 11, { align: "right" });
 
         pdf.setDrawColor(31, 41, 55);
         pdf.setLineWidth(0.4);
         pdf.line(M, M + 14, PAGE_W - M, M + 14);
+
+        // Set the PDF document's metadata title so it shows up in the
+        // viewer tab and file properties dialog.
+        try {
+            pdf.setProperties({
+                title: titleText,
+                subject: "Stage plot",
+                creator: "myStage",
+            });
+        } catch (_) { /* older jsPDF builds may not support this */ }
 
         // ---- 3. Stage block (vector border + JPEG fill + vector labels) ----
         // Reserve right ~110mm for the input list (so plot + list fit on page 1).
@@ -1142,7 +1185,7 @@
         drawInputListVector(pdf, listX, listY, listW, PAGE_H - M, M);
 
         // ---- 5. Save ----
-        pdf.save(`mystage-${timestamp()}.pdf`);
+        pdf.save(exportFilename("pdf"));
     }
 
     /**
@@ -1276,6 +1319,20 @@
         );
     }
 
+    /**
+     * Convert the plot title into a safe filename slug, falling back to
+     * "mystage" if no title is set. Returns e.g. "the-band-2026-05-11.pdf".
+     */
+    function exportFilename(ext) {
+        const slug = (state.title || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 60);
+        const base = slug || "mystage";
+        return `${base}-${timestamp()}.${ext}`;
+    }
+
     /* =============================================================
      * 15. BOOT
      * ============================================================= */
@@ -1283,6 +1340,24 @@
         renderPalette();
         load();
         renderStage();
+        syncTitleInput();
+
+        // Title editing: update state + autosave on every keystroke.
+        // Also reflect the title in the document.title so the browser tab
+        // is identifiable when several plots are open.
+        const syncDocTitle = () => {
+            document.title = state.title
+                ? `${state.title} — myStage`
+                : "myStage — Stage Plot Builder";
+        };
+        if ($title) {
+            $title.addEventListener("input", (e) => {
+                state.title = e.target.value;
+                syncDocTitle();
+                save();
+            });
+        }
+        syncDocTitle();
     }
 
     init();

@@ -34,6 +34,22 @@
             <span class="tagline">Stage Plot Builder</span>
         </div>
 
+        <!--
+            Plot title. Stored in state.title and included in all exports
+            (PDF/JSON/image) and the export filename. Empty string = untitled.
+        -->
+        <div class="plot-title-wrap">
+            <input
+                type="text"
+                id="plot-title"
+                class="plot-title"
+                placeholder="Untitled stage plot — click to name"
+                maxlength="120"
+                spellcheck="false"
+                autocomplete="off"
+            />
+        </div>
+
         <div class="topbar-actions">
             <button id="btn-export-png" class="btn" title="Export stage + input list as JPEG image">
                 <i class="fa-solid fa-image"></i> Image

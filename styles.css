@@ -65,6 +65,46 @@ button {
     margin-left: 4px;
 }
 
+/* -------- PLOT TITLE (in topbar) -------- */
+.plot-title-wrap {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 0 16px;
+    min-width: 0;
+}
+.plot-title {
+    width: 100%;
+    max-width: 520px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #f9fafb;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-align: center;
+    transition: background 0.15s, border-color 0.15s;
+    /* Truncate when unfocused */
+    text-overflow: ellipsis;
+}
+.plot-title::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+    font-style: italic;
+}
+.plot-title:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: #374151;
+}
+.plot-title:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #f59e0b;
+    text-align: left;
+}
+
 .topbar-actions {
     display: flex;
     gap: 8px;
