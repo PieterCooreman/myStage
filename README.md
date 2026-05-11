@@ -2,6 +2,8 @@
 
 A single-page stage plot builder for bands and sound engineers. Pure HTML / CSS / vanilla JS, no build step.
 
+**Live demo:** https://pietercooreman.github.io/myStage/
+
 ## Run
 
 Open `index.html` in a browser. That's it.
