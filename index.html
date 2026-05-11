@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>myStage - Stage Plot Builder</title>
+
+    <!-- FontAwesome for icons used in the palette and toolbars -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
+    <!-- html2canvas: used to rasterise the stage + input list for PNG/PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- jsPDF: used to build a PDF document from the rasterised canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <!--
+        ============================================================
+        TOP BAR
+        Contains the app title and the global action buttons
+        (save/export/import/clear).
+        ============================================================
+    -->
+    <header class="topbar">
+        <div class="brand">
+            <i class="fa-solid fa-guitar"></i>
+            <h1>myStage</h1>
+            <span class="tagline">Stage Plot Builder</span>
+        </div>
+
+        <div class="topbar-actions">
+            <button id="btn-export-png" class="btn" title="Export stage + input list as JPEG image">
+                <i class="fa-solid fa-image"></i> Image
+            </button>
+            <button id="btn-export-pdf" class="btn" title="Export stage + input list as PDF">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+            </button>
+            <button id="btn-export-json" class="btn" title="Download session as JSON">
+                <i class="fa-solid fa-download"></i> JSON
+            </button>
+            <label class="btn" title="Load a previously saved JSON session">
+                <i class="fa-solid fa-upload"></i> Import
+                <input type="file" id="file-import" accept="application/json" hidden />
+            </label>
+            <button id="btn-clear" class="btn btn-danger" title="Clear the entire stage">
+                <i class="fa-solid fa-trash"></i> Clear
+            </button>
+        </div>
+    </header>
+
+    <!--
+        ============================================================
+        MAIN LAYOUT
+        - Left:  palette (drag sources, grouped by category)
+        - Middle: stage canvas (drop target)
+        - Right: input list (channel list, generated from canvas)
+        ============================================================
+    -->
+    <main class="layout">
+        <!-- ============== PALETTE ============== -->
+        <aside class="palette" id="palette">
+            <h2>Palette</h2>
+            <p class="hint">Drag any item onto the stage.</p>
+            <!-- Categories + items are injected by JS so the catalog is data-driven. -->
+        </aside>
+
+        <!-- ============== STAGE CANVAS ============== -->
+        <section class="stage-wrap">
+            <div class="stage-toolbar">
+                <span class="stage-label-back">BACK OF STAGE (Upstage)</span>
+            </div>
+
+            <!--
+                The drop zone. Items become absolutely-positioned children
+                of this element. We rely on its bounding rect when computing
+                drop coordinates.
+            -->
+            <div class="stage" id="stage">
+                <div class="stage-grid"></div>
+                <!-- Canvas items rendered here -->
+            </div>
+
+            <div class="stage-toolbar">
+                <span class="stage-label-front">FRONT OF STAGE / AUDIENCE</span>
+            </div>
+        </section>
+
+        <!-- ============== INPUT LIST ============== -->
+        <aside class="inputs">
+            <h2>Input List</h2>
+            <p class="hint">Channels auto-update from items on stage. Add notes per channel.</p>
+            <table class="input-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px">Ch</th>
+                        <th>Item / Label</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="input-list-body">
+                    <!-- Generated rows go here -->
+                </tbody>
+            </table>
+            <p class="empty-hint" id="empty-hint">No items yet — drag from the palette to begin.</p>
+        </aside>
+    </main>
+
+    <!--
+        ============================================================
+        FLOATING CONTEXT TOOLBAR
+        Appears next to the currently-selected canvas item and offers
+        rotate / layer / duplicate / label / delete controls.
+        ============================================================
+    -->
+    <div class="item-toolbar" id="item-toolbar" hidden>
+        <button data-action="rotate-left" title="Rotate -15°">
+            <i class="fa-solid fa-rotate-left"></i>
+        </button>
+        <input
+            type="range"
+            id="rotate-slider"
+            min="0"
+            max="360"
+            step="1"
+            value="0"
+            title="Rotate (0-360°)"
+        />
+        <button data-action="rotate-right" title="Rotate +15°">
+            <i class="fa-solid fa-rotate-right"></i>
+        </button>
+        <button data-action="forward" title="Bring forward">
+            <i class="fa-solid fa-arrow-up"></i>
+        </button>
+        <button data-action="backward" title="Send backward">
+            <i class="fa-solid fa-arrow-down"></i>
+        </button>
+        <button data-action="duplicate" title="Duplicate">
+            <i class="fa-solid fa-clone"></i>
+        </button>
+        <button data-action="label" title="Edit label">
+            <i class="fa-solid fa-tag"></i>
+        </button>
+        <button data-action="delete" title="Delete" class="danger">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    </div>
+
+    <script src="icons.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
